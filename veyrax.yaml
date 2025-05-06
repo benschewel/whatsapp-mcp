@@ -1,6 +1,6 @@
 name: WhatsApp-MCP
 description: "WhatsApp MCP server that allows interaction with WhatsApp messages and contacts"
-base_image: golang:1.21-bullseye # Using Debian-based image instead of Alpine
+base_image: golang:1.21-bullseye
 project_directory: /app
 
 # Install both Go and Python dependencies
@@ -12,6 +12,8 @@ install_command: |
 # Build the Go WhatsApp Bridge
 build_command: |
   mkdir -p whatsapp-bridge/store
+  # Update the Go code to use port 8081 instead of 8080
+  sed -i 's/startRESTServer(client, messageStore, 8080)/startRESTServer(client, messageStore, 8081)/g' whatsapp-bridge/main.go
   cd whatsapp-bridge && CGO_ENABLED=1 go build -o whatsapp-bridge main.go
 
 # Start both components with proper error handling
@@ -31,7 +33,7 @@ start_command: |
     exit 1
   fi
   
-  # Start the Python MCP server in the foreground
+  # Start the Python MCP server in the foreground with HTTP transport
   cd ../whatsapp-mcp-server && python3 main.py
 
 # Environment variables
@@ -39,3 +41,8 @@ env:
   VEYRAX_API_KEY: config.VEYRAX_API_KEY
   CGO_ENABLED: "1"
   PYTHONUNBUFFERED: "1"
+  PORT: "3000"  # Set the port for HTTP transport
+
+# Tell VeyraX which port to use for health checks and traffic
+ports:
+  - 3000

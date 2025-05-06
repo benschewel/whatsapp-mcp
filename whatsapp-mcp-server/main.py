@@ -1,4 +1,5 @@
 from typing import List, Dict, Any, Optional
+import os
 from mcp.server.fastmcp import FastMCP
 from whatsapp import (
     search_contacts as whatsapp_search_contacts,
@@ -247,5 +248,11 @@ def download_media(message_id: str, chat_jid: str) -> Dict[str, Any]:
         }
 
 if __name__ == "__main__":
-    # Initialize and run the server
-    mcp.run(transport='stdio')
+    # Get the port from environment variable or use default port 3000
+    port = int(os.environ.get("PORT", 3000))
+    
+    # Log startup message
+    print(f"Starting WhatsApp MCP server on HTTP transport, port {port}...")
+    
+    # Initialize and run the server with HTTP transport instead of stdio
+    mcp.run(transport='http', host='0.0.0.0', port=port)
