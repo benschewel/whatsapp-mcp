@@ -1,22 +1,41 @@
 name: WhatsApp-MCP
-description: "WhatsApp MCP server that allows Claude to interact with your WhatsApp messages and contacts"
-base_image: golang:1.21-alpine
+description: "WhatsApp MCP server that allows interaction with WhatsApp messages and contacts"
+base_image: golang:1.21-bullseye # Using Debian-based image instead of Alpine
 project_directory: /app
-# We'll need to set up both the Go and Python environments
+
+# Install both Go and Python dependencies
 install_command: |
-  apk add --no-cache python3 py3-pip ffmpeg gcc musl-dev sqlite-dev
-  cd whatsapp-bridge && go mod download
-  cd ../whatsapp-mcp-server && pip install uv && uv pip install -r requirements.txt
+  apt-get update && apt-get install -y python3 python3-pip ffmpeg gcc sqlite3 libsqlite3-dev
+  cd whatsapp-bridge && go mod tidy && go mod download
+  cd ../whatsapp-mcp-server && pip3 install -r requirements.txt
+
+# Build the Go WhatsApp Bridge
 build_command: |
-  cd whatsapp-bridge && CGO_ENABLED=1 go build -o whatsapp-bridge ./main.go
+  mkdir -p whatsapp-bridge/store
+  cd whatsapp-bridge && CGO_ENABLED=1 go build -o whatsapp-bridge main.go
+
+# Start both components with proper error handling
 start_command: |
   # Start the Go bridge in the background
-  cd whatsapp-bridge && ./whatsapp-bridge &
-  # Wait a moment for the bridge to initialize
-  sleep 5
-  # Start the Python MCP server
-  cd whatsapp-mcp-server && python main.py
+  cd whatsapp-bridge && CGO_ENABLED=1 ./whatsapp-bridge &
+  BRIDGE_PID=$!
+  echo "Started WhatsApp Bridge with PID: $BRIDGE_PID"
+  
+  # Wait for bridge to initialize and create necessary files
+  echo "Waiting for WhatsApp Bridge to initialize..."
+  sleep 10
+  
+  # Check if bridge is still running
+  if ! kill -0 $BRIDGE_PID 2>/dev/null; then
+    echo "WhatsApp Bridge failed to start. Check logs."
+    exit 1
+  fi
+  
+  # Start the Python MCP server in the foreground
+  cd ../whatsapp-mcp-server && python3 main.py
+
+# Environment variables
 env:
   VEYRAX_API_KEY: config.VEYRAX_API_KEY
-  # You might need to add other environment variables specific to your setup
-  # CGO_ENABLED: "1"
+  CGO_ENABLED: "1"
+  PYTHONUNBUFFERED: "1"
