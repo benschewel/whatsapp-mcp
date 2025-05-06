@@ -12,8 +12,7 @@ install_command: |
 # Build the Go WhatsApp Bridge
 build_command: |
   mkdir -p whatsapp-bridge/store
-  # Update the Go code to use port 8081 instead of 8080
-  sed -i 's/startRESTServer(client, messageStore, 8080)/startRESTServer(client, messageStore, 8081)/g' whatsapp-bridge/main.go
+  # No sed command - keeping original port 8080
   cd whatsapp-bridge && CGO_ENABLED=1 go build -o whatsapp-bridge main.go
 
 # Start both components with proper error handling
